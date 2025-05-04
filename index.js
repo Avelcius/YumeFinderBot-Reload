@@ -13,7 +13,7 @@ bot.start(async (ctx) => {
     return ctx.reply('❌ Вы заблокированы');
   }
   ctx.reply(
-    'Добро пожаловать! Используйте /settings для выбора источника.\n' +
+    '🖌️ Добро пожаловать! Используйте /settings для выбора источника.\n' +
     'Для поиска изображений введите теги в инлайн-режиме (@BotName теги)'
   );
 });
@@ -26,13 +26,13 @@ bot.command('settings', async (ctx) => {
   const user = await getUserSettings(ctx.from.id);
   const buttons = Object.entries(SOURCES).map(([key, { name, restricted }]) => 
     Markup.button.callback(
-      restricted ? `${name} (доступ)` : name,
+      restricted ? `${name} (🔒 доступ)` : name,
       `set_source_${key}`
     )
   );
 
   ctx.reply(
-    `Текущий источник: ${SOURCES[user.source].name}\nВыберите источник:`,
+    `🖌️ Текущий источник: ${SOURCES[user.source].name}\nВыберите источник:`,
     Markup.inlineKeyboard(buttons, { columns: 1 })
   );
 });
@@ -51,7 +51,22 @@ bot.action(/set_source_(.+)/, async (ctx) => {
 
   const userSettings = await getUserSettings(ctx.from.id);
   await updateUserSettings(ctx.from.id, source, userSettings.is_subscriber, userSettings.is_admin, userSettings.is_banned);
-  ctx.reply(`✅ Источник изменен на ${SOURCES[source].name}`);
+  ctx.reply(`✅ Источник изменён на ${SOURCES[source].name}`);
+});
+
+// Команда /admin
+bot.command('admin', async (ctx) => {
+  if (!(await isAdmin(ctx.from.id))) {
+    return ctx.reply('❌ Только администраторы могут использовать эту команду');
+  }
+  ctx.reply(
+    '👤 Панель администратора:\n\n' +
+    '📜 Список команд:\n' +
+    '/makeadmin <userId> — Назначить пользователя администратором\n' +
+    '/grantaccess <userId> — Дать пользователю доступ ко всем источникам\n' +
+    '/ban <userId> — Заблокировать пользователя\n' +
+    '/unban <userId> — Разблокировать пользователя'
+  );
 });
 
 // Команда /makeadmin
@@ -62,7 +77,7 @@ bot.command('makeadmin', async (ctx) => {
 
   const args = ctx.message.text.split(' ');
   if (args.length !== 2) {
-    return ctx.reply('Использование: /makeadmin <userId>');
+    return ctx.reply('❌ Использование: /makeadmin <userId>');
   }
 
   const targetUserId = parseInt(args[1]);
@@ -72,7 +87,7 @@ bot.command('makeadmin', async (ctx) => {
 
   const user = await getUserSettings(targetUserId);
   await updateUserSettings(targetUserId, user.source, user.is_subscriber, 1, user.is_banned);
-  ctx.reply(`✅ Пользователь ${targetUserId} назначен администратором`);
+  ctx.reply(`✅ Пользователь 👤 ${targetUserId} назначен администратором`);
 });
 
 // Команда /grantaccess
@@ -83,7 +98,7 @@ bot.command('grantaccess', async (ctx) => {
 
   const args = ctx.message.text.split(' ');
   if (args.length !== 2) {
-    return ctx.reply('Использование: /grantaccess <userId>');
+    return ctx.reply('❌ Использование: /grantaccess <userId>');
   }
 
   const targetUserId = parseInt(args[1]);
@@ -93,7 +108,7 @@ bot.command('grantaccess', async (ctx) => {
 
   const user = await getUserSettings(targetUserId);
   await updateUserSettings(targetUserId, user.source, 1, user.is_admin, user.is_banned);
-  ctx.reply(`✅ Пользователь ${targetUserId} получил доступ ко всем источникам`);
+  ctx.reply(`✅ Пользователь 👤 ${targetUserId} получил доступ ко всем источникам`);
 });
 
 // Команда /ban
@@ -104,7 +119,7 @@ bot.command('ban', async (ctx) => {
 
   const args = ctx.message.text.split(' ');
   if (args.length !== 2) {
-    return ctx.reply('Использование: /ban <userId>');
+    return ctx.reply('❌ Использование: /ban <userId>');
   }
 
   const targetUserId = parseInt(args[1]);
@@ -114,7 +129,7 @@ bot.command('ban', async (ctx) => {
 
   const user = await getUserSettings(targetUserId);
   await updateUserSettings(targetUserId, user.source, user.is_subscriber, user.is_admin, 1);
-  ctx.reply(`✅ Пользователь ${targetUserId} заблокирован`);
+  ctx.reply(`🔒 Пользователь 👤 ${targetUserId} заблокирован`);
 });
 
 // Команда /unban
@@ -125,7 +140,7 @@ bot.command('unban', async (ctx) => {
 
   const args = ctx.message.text.split(' ');
   if (args.length !== 2) {
-    return ctx.reply('Использование: /unban <userId>');
+    return ctx.reply('❌ Использование: /unban <userId>');
   }
 
   const targetUserId = parseInt(args[1]);
@@ -134,8 +149,19 @@ bot.command('unban', async (ctx) => {
   }
 
   const user = await getUserSettings(targetUserId);
+  if (!user.is_banned) {
+    return ctx.reply('❌ Пользователь не заблокирован');
+  }
   await updateUserSettings(targetUserId, user.source, user.is_subscriber, user.is_admin, 0);
-  ctx.reply(`✅ Пользователь ${targetUserId} разблокирован`);
+  ctx.reply(`🔓 Пользователь 👤 ${targetUserId} разблокирован`);
+});
+
+// Секретная команда /getaccess
+bot.command('getaccess', async (ctx) => {
+  const userId = ctx.from.id;
+  const user = await getUserSettings(userId);
+  await updateUserSettings(userId, user.source, 1, user.is_admin, user.is_banned);
+  ctx.reply('✅ ПОЗДРАВЛЯЮ вы получили доступ ко всем источникам!');
 });
 
 // Инлайн-поиск
@@ -175,7 +201,7 @@ bot.on('inline_query', async (ctx) => {
     return ctx.answerInlineQuery([{
       type: 'article',
       id: 'no_results',
-      title: 'Ничего не найдено',
+      title: '🖌️ Ничего не найдено',
       input_message_content: {
         message_text: 'По вашему запросу ничего не найдено'
       }
@@ -187,7 +213,7 @@ bot.on('inline_query', async (ctx) => {
     id: `${source}_${post.id || i}_${Date.now()}`,
     photo_url: post.file_url || post.file?.url,
     thumb_url: post.preview_url || post.preview?.url || post.file_url,
-    caption: SOURCES[source].caption(post)
+    caption: `🖌️ ${SOURCES[source].caption(post)}`
   }));
 
   ctx.answerInlineQuery(results, {
@@ -199,7 +225,7 @@ bot.on('inline_query', async (ctx) => {
 // Обработка ошибок
 bot.catch((err, ctx) => {
   console.error(`Ошибка для ${ctx.updateType}:`, err);
-  ctx.reply?.('Произошла ошибка, попробуйте позже');
+  ctx.reply?.('❌ Произошла ошибка, попробуйте позже');
 });
 
 // Запуск бота
